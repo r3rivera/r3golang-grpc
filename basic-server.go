@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"time"
 
 	pb "github.com/r3rivera/r3app-protobuffer-repo/basic-test"
@@ -65,6 +66,31 @@ func (*serverHandler) NotificationMessage(rqst *pb.NotificationMessageRequest,
 	return nil
 }
 
+//Client-side Stream RPC
+func (*serverHandler) DataUploadMessage(clientStream pb.DataUploadMessageService_DataUploadMessageServer) error {
+	log.Println("Handling client-side streaming data!")
+
+	for {
+		rqst, err := clientStream.Recv()
+		if err == io.EOF {
+			log.Println("Done processing client stream request...")
+
+			//Optional
+			return clientStream.SendAndClose(&pb.DataUploadMessageResponse{
+				StatusCode: "200",
+			})
+		}
+
+		if err != nil {
+			log.Fatalf("Error found processing client stream request...%v", err)
+			panic(err)
+		}
+		println("Request received from ", rqst.Payload.Message)
+		//Go routine to processed each request using channel
+
+	}
+}
+
 func main() {
 	log.Println("Main Server...")
 
@@ -77,8 +103,9 @@ func main() {
 	server := grpc.NewServer()
 
 	pb.RegisterHealthCheckStatusServiceServer(server, &serverHandler{})
-	pb.RegisterCalculatorServiceServer(server, &serverHandler{})
-	pb.RegisterNotificationMessageServiceServer(server, &serverHandler{})
+	pb.RegisterCalculatorServiceServer(server, &serverHandler{})          //Unary stream
+	pb.RegisterNotificationMessageServiceServer(server, &serverHandler{}) //Server-side stream
+	pb.RegisterDataUploadMessageServiceServer(server, &serverHandler{})   //Client-side stream
 
 	if err := server.Serve(listener); err != nil {
 		log.Fatalf("Failed to server: %v", err)
