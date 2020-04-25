@@ -91,6 +91,48 @@ func (*serverHandler) DataUploadMessage(clientStream pb.DataUploadMessageService
 	}
 }
 
+//Bi-Directional Stream
+func (*serverHandler) ChatSupportMessage(biStream pb.ChatSupportMessageService_ChatSupportMessageServer) error {
+	log.Println("Handling Bi-Directional streaming data!")
+
+	for {
+		rqst, err := biStream.Recv()
+
+		if err == io.EOF {
+			log.Println("End of file found!")
+			return nil
+		}
+
+		if err != nil {
+			log.Fatalf("Error handling the bi-directional request. Error is %v", err)
+			return err
+		}
+
+		chatID := rqst.ChatId
+		msg := rqst.ChatMessage.Message
+		sender := rqst.ChatMessage.Sender
+		receiver := rqst.ChatMessage.Receipient
+
+		respMsg := pb.ChatSupportMessage{
+			Message:    "Hello there " + sender + ", I have your message as " + msg,
+			Sender:     "Admin",
+			Receipient: receiver,
+		}
+
+		sendErr := biStream.Send(&pb.ChatSupportMessageResponse{
+			ChatId:      chatID,
+			ChatMessage: &respMsg,
+		})
+
+		if sendErr != nil {
+			log.Fatalf("Error sending back the bi-directional response. Error is %v", err)
+			return sendErr
+		}
+
+	}
+
+}
+
 func main() {
 	log.Println("Main Server...")
 
@@ -106,6 +148,7 @@ func main() {
 	pb.RegisterCalculatorServiceServer(server, &serverHandler{})          //Unary stream
 	pb.RegisterNotificationMessageServiceServer(server, &serverHandler{}) //Server-side stream
 	pb.RegisterDataUploadMessageServiceServer(server, &serverHandler{})   //Client-side stream
+	pb.RegisterChatSupportMessageServiceServer(server, &serverHandler{})  //Bi-Directional stream
 
 	if err := server.Serve(listener); err != nil {
 		log.Fatalf("Failed to server: %v", err)
