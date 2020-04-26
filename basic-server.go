@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	pb "github.com/r3rivera/r3app-protobuffer-repo/basic-test"
+	pb "github.com/r3rivera/r3app-protobuffer-repo/basicpb"
 
 	"log"
 	"net"
